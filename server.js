@@ -33,7 +33,7 @@ let eventResponse = 'clientEventResponse';
 function fetchLobbies(wsc) {
     let lobbyData = Object.keys(lobbies).map(lobbyName => ({
         name: lobbyName,
-        players: lobbies[lobbyName].clients.length,
+        playerCount: lobbies[lobbyName].clients.length,
         capacity: lobbies[lobbyName].capacity,
         requiresPassword: lobbies[lobbyName].password !== null
     }));
@@ -43,7 +43,7 @@ function fetchLobbies(wsc) {
 
 function createLobby(wsc, lobbyName, capacity = 10, password = null) {
     if (lobbies[lobbyName]) {
-        sendMessage(wsc, errorResponse, 'LOBBY_ALREADY_EXISTS', 'The lobby "${lobbyName}" already exists.');
+        sendMessage(wsc, errorResponse, 'LobbyAlreadyExists', 'The lobby "${lobbyName}" already exists.');
         return false;
     } else {
         const hashedPassword = password ? bcrypt.hashSync(password, 10) : null;
@@ -57,22 +57,22 @@ function createLobby(wsc, lobbyName, capacity = 10, password = null) {
 
 function joinLobby(wsc, lobbyName, password = null) {
     if (wsc.lobby) {
-        sendMessage(wsc, errorResponse, 'ALREADY_IN_LOBBY', 'You are already inside a lobby. Please leave your current lobby before joining a new one.');
+        sendMessage(wsc, errorResponse, 'AlreadyInLobby', 'You are already inside a lobby. Please leave your current lobby before joining a new one.');
         return false;
     }
 
     if (!lobbies[lobbyName]) {
-        sendMessage(wsc, errorResponse, 'LOBBY_NOT_FOUND', 'The lobby "${lobbyName}" does not exist.');
+        sendMessage(wsc, errorResponse, 'LobbyNotFound', 'The lobby "${lobbyName}" does not exist.');
         return false;
     }
 
     if (lobbies[lobbyName].clients.length >= lobbies[lobbyName].capacity) {
-        sendMessage(wsc, errorResponse, 'LOBBY_FULL', `The lobby "${lobbyName}" is full.`);
+        sendMessage(wsc, errorResponse, 'LobbyFull', `The lobby "${lobbyName}" is full.`);
         return false;
     }
 
     if (lobbies[lobbyName].password && !bcrypt.compareSync(password, lobbies[lobbyName].password)) {
-        sendMessage(wsc, errorResponse, 'INVALID_PASSWORD', 'The password you entered is incorrect.');
+        sendMessage(wsc, errorResponse, 'InvalidPassword', 'The password you entered is incorrect.');
         return false;
     }
 
@@ -86,13 +86,13 @@ function joinLobby(wsc, lobbyName, password = null) {
 
 function broadcastJoinLobby(wsc, msgObj) {
     if (joinLobby(wsc, msgObj.lobby, msgObj.password)) {
-        broadcastToLobby(msgObj.lobby, joinLobbyBroadcastResponse, 'USER_JOINED', JSON.stringify(wsc.id), wsc);
+        broadcastToLobby(msgObj.lobby, joinLobbyBroadcastResponse, 'USER_JOINED', JSON.stringify({clientId : wsc.id}), wsc);
     }
 }
 
 function leaveLobby(wsc, lobbyName) {
     if (!lobbyName) {
-        sendMessage(wsc, errorResponse, 'NOT_IN_LOBBY', 'You are not currently in a lobby.');
+        sendMessage(wsc, errorResponse, 'NotInLobby', 'You are not currently in a lobby.');
         return false;
     }
 
@@ -111,7 +111,7 @@ function broadcastLeaveLobby(wsc) {
     let userID = wsc.id;
     let lobby = wsc.lobby;
     if (leaveLobby(wsc, lobby) && lobbies[lobby]) {
-        broadcastToLobby(lobby, leaveLobbyBroadcastResponse, 'USER_LEFT', JSON.stringify(userID));
+        broadcastToLobby(lobby, leaveLobbyBroadcastResponse, 'USER_LEFT', JSON.stringify({clientId : userID}));
     }
 }
 
@@ -145,7 +145,7 @@ wss.on('connection', (wsc) => {
         console.error('WebSocket error on client connection:', error);
     });
 
-    sendMessage(wsc, connectedResponse, 'USER_CONNECTED', JSON.stringify(wsc.id));
+    sendMessage(wsc, connectedResponse, 'USER_CONNECTED', JSON.stringify({clientId : wsc.id}));
 
     // Set up an interval to send pings every 30 seconds
     setInterval(() => {
@@ -183,7 +183,7 @@ wss.on('connection', (wsc) => {
                         lobbies[wsc.lobby].eventBuffer.push(json);
                         broadcastToLobby(wsc.lobby, eventResponse, 'BROADCAST', json);
                     } else {
-                        sendMessage(wsc, errorResponse, 'NO_LOBBY_JOINED', 'You have not joined any lobby!');
+                        sendMessage(wsc, errorResponse, 'NoLobbyJoined', 'You have not joined any lobby!');
                     }
                     break;
                 // Handle more message types as needed
