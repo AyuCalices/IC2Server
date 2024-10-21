@@ -26,6 +26,8 @@ let leaveLobbyRequest = 'leaveLobbyRequest';
 let leaveLobbyClientResponse = 'leaveLobbyClientResponse';
 let leaveLobbyBroadcastResponse = 'leaveLobbyBroadcastResponse';
 
+let clearCacheEventRequest = 'clearCacheEventRequest';
+let cacheEventRequest = 'cacheEventRequest';
 let eventRequest = 'clientEventRequest';
 let eventResponse = 'clientEventResponse';
 
@@ -177,7 +179,7 @@ wss.on('connection', (wsc) => {
                 case leaveLobbyRequest:
                     broadcastLeaveLobby(wsc);
                     break;
-                case eventRequest:
+                case cacheEventRequest:
                     if (wsc.lobby) {
                         let json = JSON.stringify(msgObj.data);
                         lobbies[wsc.lobby].eventBuffer.push(json);
@@ -185,6 +187,17 @@ wss.on('connection', (wsc) => {
                     } else {
                         sendMessage(wsc, errorResponse, 'NoLobbyJoined', 'You have not joined any lobby!');
                     }
+                    break;
+                case eventRequest:
+                if (wsc.lobby) {
+                    broadcastToLobby(wsc.lobby, eventResponse, 'BROADCAST', JSON.stringify(msgObj.data));
+                } else {
+                    sendMessage(wsc, errorResponse, 'NoLobbyJoined', 'You have not joined any lobby!');
+                }
+                    break;
+                case clearCacheEventRequest:
+                    console.log("cleared cache");
+                    lobbies[wsc.lobby].eventBuffer = [];
                     break;
                 // Handle more message types as needed
             }
